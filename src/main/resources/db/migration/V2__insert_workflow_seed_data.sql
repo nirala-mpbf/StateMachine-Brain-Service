@@ -25,10 +25,10 @@ INSERT INTO workflow_brain.workflow_transition
 SELECT seed.event_code, 'EXTERNAL', definition.id, source_state.id, target_state.id
 FROM workflow_brain.workflow_definition definition
 CROSS JOIN (VALUES
-    ('OTP_VERIFICATION', 'OTP_VERIFIED', 'PROFILE_DETAILS'),
-    ('PROFILE_DETAILS', 'PROFILE_SUBMITTED', 'ACCOUNT_STATEMENT_UPLOAD'),
-    ('ACCOUNT_STATEMENT_UPLOAD', 'ACCOUNT_STATEMENT_UPLOADED', 'UDYAM_DOCUMENT_UPLOAD'),
-    ('UDYAM_DOCUMENT_UPLOAD', 'UDYAM_DOCUMENT_UPLOADED', 'COMPLETED')
+    ('OTP_VERIFICATION', 'VERIFY_OTP', 'PROFILE_DETAILS'),
+    ('PROFILE_DETAILS', 'UPDATE_PROFILE', 'ACCOUNT_STATEMENT_UPLOAD'),
+    ('ACCOUNT_STATEMENT_UPLOAD', 'UPLOAD_ACCOUNT_STATEMENT', 'UDYAM_DOCUMENT_UPLOAD'),
+    ('UDYAM_DOCUMENT_UPLOAD', 'UPLOAD_UDYAM_DOCUMENT', 'COMPLETED')
 ) AS seed(source_state, event_code, target_state)
 JOIN workflow_brain.workflow_state source_state
     ON source_state.fk_id_workflow_definition = definition.id AND source_state.state_code = seed.source_state

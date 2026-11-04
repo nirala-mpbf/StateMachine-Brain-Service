@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @OpenAPIDefinition(info = @Info(title = "State Machine Brain API", version = "1.0",
         description = "Database-configured workflows with JDBC persistence and idempotent mutations."))
-@Tag(name = "Workflows", description = "Create workflows, inspect progress and record completed business events.")
+@Tag(name = "Workflows", description = "Create workflows, inspect progress and request workflow step execution.")
 @Slf4j
 @RestController
 @RequestMapping(WorkflowConstants.WORKFLOWS_PATH)
@@ -46,10 +46,14 @@ public class WorkflowController {
 
     @Operation(
             operationId = "processWorkflowCommand",
-            summary = "Create a workflow, inspect progress, or submit a completed business event",
+            summary = "Create a workflow, inspect progress, or request a workflow step",
             description = """
-            Coordinates workflow progress after the consuming service completes business work.
-            This API does not verify OTPs, save profiles or upload documents.
+            Coordinates workflow steps requested by the caller. Event names are commands:
+            VERIFY_OTP, UPDATE_PROFILE, UPLOAD_ACCOUNT_STATEMENT and UPLOAD_UDYAM_DOCUMENT.
+            External service integrations for these tasks are planned but not implemented.
+            The current testing implementation applies configured transitions and bookkeeping
+            actions only; an applied event does not yet prove a business task succeeded.
+            When integrations are added, advance the workflow only after the external task succeeds.
 
             | Operation | Required metadata | Optional metadata | Forbidden metadata | HTTP |
             | --- | --- | --- | --- | --- |
@@ -65,13 +69,13 @@ public class WorkflowController {
 
             CREATE selects the highest ACTIVE definition version. Existing references keep
             their definition version. GET_STATE returns the current persisted snapshot.
-            SUBMIT_EVENT processes one business event; the resulting state is persisted.
+            SUBMIT_EVENT requests one configured workflow step; the resulting state is persisted.
 
-            Seeded onboarding events, in order:
-            1. OTP_VERIFIED: OTP_VERIFICATION → PROFILE_DETAILS
-            2. PROFILE_SUBMITTED: PROFILE_DETAILS → ACCOUNT_STATEMENT_UPLOAD
-            3. ACCOUNT_STATEMENT_UPLOADED: ACCOUNT_STATEMENT_UPLOAD → UDYAM_DOCUMENT_UPLOAD
-            4. UDYAM_DOCUMENT_UPLOADED: UDYAM_DOCUMENT_UPLOAD → COMPLETED
+            Seeded onboarding commands, in order:
+            1. VERIFY_OTP: OTP_VERIFICATION → PROFILE_DETAILS
+            2. UPDATE_PROFILE: PROFILE_DETAILS → ACCOUNT_STATEMENT_UPLOAD
+            3. UPLOAD_ACCOUNT_STATEMENT: ACCOUNT_STATEMENT_UPLOAD → UDYAM_DOCUMENT_UPLOAD
+            4. UPLOAD_UDYAM_DOCUMENT: UDYAM_DOCUMENT_UPLOAD → COMPLETED
 
             Other definitions may use other events. availableTransitions lists configured
             possibilities. nextEvent/nextState appear only
@@ -116,31 +120,31 @@ public class WorkflowController {
                                               "payload": {}
                                             }
                                             """),
-                                @ExampleObject(name = "03 - OTP verified",
+                                @ExampleObject(name = "03 - Verify OTP",
                                         value = """
                                             {
-                                              "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101","referenceId":"APP-101","event":"OTP_VERIFIED","idempotencyKey":"APP-101-OTP_VERIFIED"},
+                                              "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101","referenceId":"APP-101","event":"VERIFY_OTP","idempotencyKey":"APP-101-VERIFY_OTP"},
                                               "payload": {}
                                             }
                                             """),
-                                @ExampleObject(name = "04 - Profile submitted",
+                                @ExampleObject(name = "04 - Update profile",
                                         value = """
                                             {
-                                              "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101","referenceId":"APP-101","event":"PROFILE_SUBMITTED","idempotencyKey":"APP-101-PROFILE_SUBMITTED"},
+                                              "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101","referenceId":"APP-101","event":"UPDATE_PROFILE","idempotencyKey":"APP-101-UPDATE_PROFILE"},
                                               "payload": {}
                                             }
                                             """),
-                                @ExampleObject(name = "05 - Account statement uploaded",
+                                @ExampleObject(name = "05 - Upload account statement",
                                         value = """
                                             {
-                                              "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101","referenceId":"APP-101","event":"ACCOUNT_STATEMENT_UPLOADED","idempotencyKey":"APP-101-ACCOUNT_STATEMENT_UPLOADED"},
+                                              "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101","referenceId":"APP-101","event":"UPLOAD_ACCOUNT_STATEMENT","idempotencyKey":"APP-101-UPLOAD_ACCOUNT_STATEMENT"},
                                               "payload": {}
                                             }
                                             """),
-                                @ExampleObject(name = "06 - Udyam document uploaded",
+                                @ExampleObject(name = "06 - Upload Udyam document",
                                         value = """
                                             {
-                                              "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101","referenceId":"APP-101","event":"UDYAM_DOCUMENT_UPLOADED","idempotencyKey":"APP-101-UDYAM_DOCUMENT_UPLOADED"},
+                                              "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101","referenceId":"APP-101","event":"UPLOAD_UDYAM_DOCUMENT","idempotencyKey":"APP-101-UPLOAD_UDYAM_DOCUMENT"},
                                               "payload": {}
                                             }
                                             """)
@@ -156,7 +160,7 @@ public class WorkflowController {
                                     value = """
                                         {
                                           "metadata": {"operation":"GET_STATE","requestId":"req-101","referenceId":"APP-101","workflowKey":"onboarding","status":"SUCCESS","processedAt":"2026-11-04T06:00:00Z"},
-                                          "payload": {"referenceId":"APP-101","workflowKey":"onboarding","definitionVersion":1,"currentState":"PROFILE_DETAILS","nextEvent":"PROFILE_SUBMITTED","nextState":"ACCOUNT_STATEMENT_UPLOAD","completed":false,"availableTransitions":[{"event":"PROFILE_SUBMITTED","nextState":"ACCOUNT_STATEMENT_UPLOAD"}]}
+                                          "payload": {"referenceId":"APP-101","workflowKey":"onboarding","definitionVersion":1,"currentState":"PROFILE_DETAILS","nextEvent":"UPDATE_PROFILE","nextState":"ACCOUNT_STATEMENT_UPLOAD","completed":false,"availableTransitions":[{"event":"UPDATE_PROFILE","nextState":"ACCOUNT_STATEMENT_UPLOAD"}]}
                                         }
                                         """),
                             @ExampleObject(name = "Completed workflow state",
@@ -169,22 +173,22 @@ public class WorkflowController {
                             @ExampleObject(name = "Event applied",
                                     value = """
                                         {
-                                          "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101","referenceId":"APP-101","event":"OTP_VERIFIED","idempotencyKey":"APP-101-OTP_VERIFIED","workflowKey":"onboarding","status":"SUCCESS","processedAt":"2026-11-04T06:00:00Z","idempotencyReplayed":false},
-                                          "payload": {"referenceId":"APP-101","workflowKey":"onboarding","definitionVersion":1,"currentState":"PROFILE_DETAILS","nextEvent":"PROFILE_SUBMITTED","nextState":"ACCOUNT_STATEMENT_UPLOAD","completed":false,"availableTransitions":[{"event":"PROFILE_SUBMITTED","nextState":"ACCOUNT_STATEMENT_UPLOAD"}],"eventOutcome":"APPLIED"}
+                                          "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101","referenceId":"APP-101","event":"VERIFY_OTP","idempotencyKey":"APP-101-VERIFY_OTP","workflowKey":"onboarding","status":"SUCCESS","processedAt":"2026-11-04T06:00:00Z","idempotencyReplayed":false},
+                                          "payload": {"referenceId":"APP-101","workflowKey":"onboarding","definitionVersion":1,"currentState":"PROFILE_DETAILS","nextEvent":"UPDATE_PROFILE","nextState":"ACCOUNT_STATEMENT_UPLOAD","completed":false,"availableTransitions":[{"event":"UPDATE_PROFILE","nextState":"ACCOUNT_STATEMENT_UPLOAD"}],"eventOutcome":"APPLIED"}
                                         }
                                         """),
                             @ExampleObject(name = "Workflow completed",
                                     value = """
                                         {
-                                          "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101","referenceId":"APP-101","event":"UDYAM_DOCUMENT_UPLOADED","idempotencyKey":"APP-101-UDYAM_DOCUMENT_UPLOADED","workflowKey":"onboarding","status":"SUCCESS","processedAt":"2026-11-04T06:00:00Z","idempotencyReplayed":false},
+                                          "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101","referenceId":"APP-101","event":"UPLOAD_UDYAM_DOCUMENT","idempotencyKey":"APP-101-UPLOAD_UDYAM_DOCUMENT","workflowKey":"onboarding","status":"SUCCESS","processedAt":"2026-11-04T06:00:00Z","idempotencyReplayed":false},
                                           "payload": {"referenceId":"APP-101","workflowKey":"onboarding","definitionVersion":1,"currentState":"COMPLETED","completed":true,"availableTransitions":[],"eventOutcome":"APPLIED"}
                                         }
                                         """),
                             @ExampleObject(name = "Idempotent event replay",
                                     value = """
                                         {
-                                          "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101-retry","referenceId":"APP-101","event":"OTP_VERIFIED","idempotencyKey":"APP-101-OTP_VERIFIED","workflowKey":"onboarding","status":"SUCCESS","processedAt":"2026-11-04T06:00:00Z","idempotencyReplayed":true},
-                                          "payload": {"referenceId":"APP-101","workflowKey":"onboarding","definitionVersion":1,"currentState":"PROFILE_DETAILS","nextEvent":"PROFILE_SUBMITTED","nextState":"ACCOUNT_STATEMENT_UPLOAD","completed":false,"availableTransitions":[{"event":"PROFILE_SUBMITTED","nextState":"ACCOUNT_STATEMENT_UPLOAD"}],"eventOutcome":"APPLIED"}
+                                          "metadata": {"operation":"SUBMIT_EVENT","requestId":"req-101-retry","referenceId":"APP-101","event":"VERIFY_OTP","idempotencyKey":"APP-101-VERIFY_OTP","workflowKey":"onboarding","status":"SUCCESS","processedAt":"2026-11-04T06:00:00Z","idempotencyReplayed":true},
+                                          "payload": {"referenceId":"APP-101","workflowKey":"onboarding","definitionVersion":1,"currentState":"PROFILE_DETAILS","nextEvent":"UPDATE_PROFILE","nextState":"ACCOUNT_STATEMENT_UPLOAD","completed":false,"availableTransitions":[{"event":"UPDATE_PROFILE","nextState":"ACCOUNT_STATEMENT_UPLOAD"}],"eventOutcome":"APPLIED"}
                                         }
                                         """),
                             @ExampleObject(name = "Branching workflow (custom definition)",
@@ -212,14 +216,14 @@ public class WorkflowController {
                                     value = """
                                         {
                                           "metadata": {"operation":"CREATE","requestId":"req-101","referenceId":"APP-101","idempotencyKey":"APP-101-create","workflowKey":"onboarding","status":"SUCCESS","processedAt":"2026-11-04T06:00:00Z","idempotencyReplayed":false},
-                                          "payload": {"referenceId":"APP-101","workflowKey":"onboarding","definitionVersion":1,"currentState":"OTP_VERIFICATION","nextEvent":"OTP_VERIFIED","nextState":"PROFILE_DETAILS","completed":false,"availableTransitions":[{"event":"OTP_VERIFIED","nextState":"PROFILE_DETAILS"}]}
+                                          "payload": {"referenceId":"APP-101","workflowKey":"onboarding","definitionVersion":1,"currentState":"OTP_VERIFICATION","nextEvent":"VERIFY_OTP","nextState":"PROFILE_DETAILS","completed":false,"availableTransitions":[{"event":"VERIFY_OTP","nextState":"PROFILE_DETAILS"}]}
                                         }
                                         """),
                             @ExampleObject(name = "Idempotent create replay",
                                     value = """
                                         {
                                           "metadata": {"operation":"CREATE","requestId":"req-101-retry","referenceId":"APP-101","idempotencyKey":"APP-101-create","workflowKey":"onboarding","status":"SUCCESS","processedAt":"2026-11-04T06:00:00Z","idempotencyReplayed":true},
-                                          "payload": {"referenceId":"APP-101","workflowKey":"onboarding","definitionVersion":1,"currentState":"OTP_VERIFICATION","nextEvent":"OTP_VERIFIED","nextState":"PROFILE_DETAILS","completed":false,"availableTransitions":[{"event":"OTP_VERIFIED","nextState":"PROFILE_DETAILS"}]}
+                                          "payload": {"referenceId":"APP-101","workflowKey":"onboarding","definitionVersion":1,"currentState":"OTP_VERIFICATION","nextEvent":"VERIFY_OTP","nextState":"PROFILE_DETAILS","completed":false,"availableTransitions":[{"event":"VERIFY_OTP","nextState":"PROFILE_DETAILS"}]}
                                         }
                                         """)
                         })),
@@ -288,7 +292,7 @@ public class WorkflowController {
                                         {
                                           "metadata": {"status":"FAILED","processedAt":"2026-11-04T06:00:00Z"},
                                           "payload": null,
-                                          "error": {"code":"EVENT_NOT_ALLOWED","description":"OTP_VERIFIED is not allowed while the workflow is COMPLETED."}
+                                          "error": {"code":"EVENT_NOT_ALLOWED","description":"VERIFY_OTP is not allowed while the workflow is COMPLETED."}
                                         }
                                         """),
                             @ExampleObject(name = ApiErrorConstants.IDEMPOTENCY_IN_PROGRESS,

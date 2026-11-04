@@ -22,8 +22,8 @@ class WorkflowIdempotencyServiceGsonTest {
                 "idempotencyKey":"key-1","workflowKey":"onboarding","status":"SUCCESS",
                 "processedAt":"2026-11-04T06:00:00Z","idempotencyReplayed":false},
                 "payload":{"referenceId":"APP-101","workflowKey":"onboarding","definitionVersion":1,
-                "currentState":"OTP_VERIFICATION","nextEvent":"OTP_VERIFIED","nextState":"PROFILE_DETAILS",
-                "completed":false,"availableTransitions":[{"event":"OTP_VERIFIED","nextState":"PROFILE_DETAILS"}]}}
+                "currentState":"OTP_VERIFICATION","nextEvent":"VERIFY_OTP","nextState":"PROFILE_DETAILS",
+                "completed":false,"availableTransitions":[{"event":"VERIFY_OTP","nextState":"PROFILE_DETAILS"}]}}
                 """;
         RedisWorkflowIdempotencyRepository repository = new RedisWorkflowIdempotencyRepository(null) {
             @Override

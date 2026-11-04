@@ -47,10 +47,10 @@ class WorkflowRequestBindingTest {
     @Test
     void submitEventPreservesEvent() {
         WorkflowCommand command = command("""
-                {"metadata":{"operation":"SUBMIT_EVENT","requestId":"r","referenceId":"a","event":"OTP_VERIFIED","idempotencyKey":"k"},"payload":{}}
+                {"metadata":{"operation":"SUBMIT_EVENT","requestId":"r","referenceId":"a","event":"VERIFY_OTP","idempotencyKey":"k"},"payload":{}}
                 """);
         assertEquals(WorkflowOperation.SUBMIT_EVENT, command.operation());
-        assertEquals("OTP_VERIFIED", command.metadata().event());
+        assertEquals("VERIFY_OTP", command.metadata().event());
     }
 
     @ParameterizedTest
@@ -104,11 +104,11 @@ class WorkflowRequestBindingTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "{\"operation\":\"GET_STATE\",\"requestId\":\"r\",\"referenceId\":\"a\",\"event\":\"OTP_VERIFIED\"}",
+            "{\"operation\":\"GET_STATE\",\"requestId\":\"r\",\"referenceId\":\"a\",\"event\":\"VERIFY_OTP\"}",
             "{\"operation\":\"GET_STATE\",\"requestId\":\"r\",\"referenceId\":\"a\",\"idempotencyKey\":\"k\"}",
             "{\"operation\":\"GET_STATE\",\"requestId\":\"r\",\"referenceId\":\"a\",\"workflowKey\":\"onboarding\"}",
-            "{\"operation\":\"CREATE\",\"requestId\":\"r\",\"referenceId\":\"a\",\"idempotencyKey\":\"k\",\"event\":\"OTP_VERIFIED\"}",
-            "{\"operation\":\"SUBMIT_EVENT\",\"requestId\":\"r\",\"referenceId\":\"a\",\"event\":\"OTP_VERIFIED\",\"idempotencyKey\":\"k\",\"workflowKey\":\"onboarding\"}"
+            "{\"operation\":\"CREATE\",\"requestId\":\"r\",\"referenceId\":\"a\",\"idempotencyKey\":\"k\",\"event\":\"VERIFY_OTP\"}",
+            "{\"operation\":\"SUBMIT_EVENT\",\"requestId\":\"r\",\"referenceId\":\"a\",\"event\":\"VERIFY_OTP\",\"idempotencyKey\":\"k\",\"workflowKey\":\"onboarding\"}"
     })
     void rejectsFieldsThatDoNotApplyToOperation(String metadata) {
         WorkflowRequest request = gson.fromJson("{\"metadata\":" + metadata + ",\"payload\":{}}", WorkflowRequest.class);

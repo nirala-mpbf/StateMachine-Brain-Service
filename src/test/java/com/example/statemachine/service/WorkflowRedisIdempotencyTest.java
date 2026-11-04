@@ -125,8 +125,8 @@ class WorkflowRedisIdempotencyTest {
         return ResponseEntity.status(201).body(new WorkflowResponse(
                 new WorkflowResponseMetadata("CREATE", "req-1", "APP-101", null, "key-1", "onboarding", "SUCCESS",
                         Instant.parse("2026-11-04T06:00:00Z"), false),
-                new WorkflowDetails("APP-101", "onboarding", 1, "OTP_VERIFICATION", "OTP_VERIFIED", "PROFILE_DETAILS",
-                        false, List.of(new AvailableWorkflowTransition("OTP_VERIFIED", "PROFILE_DETAILS")), null), null));
+                new WorkflowDetails("APP-101", "onboarding", 1, "OTP_VERIFICATION", "VERIFY_OTP", "PROFILE_DETAILS",
+                        false, List.of(new AvailableWorkflowTransition("VERIFY_OTP", "PROFILE_DETAILS")), null), null));
     }
 
     private static class RecordingRepository extends RedisWorkflowIdempotencyRepository {

@@ -4,15 +4,30 @@ A database-configured workflow service for onboarding. Built with Java 25,
 Spring Boot 4.1.1, Spring StateMachine 4.0.2, PostgreSQL, Redis, Flyway, JDBC and Gson.
 Persistence uses `NamedParameterJdbcTemplate`; there is no JPA.
 
-The consuming service verifies OTPs, saves profiles and uploads documents. It
-then reports completed business events to this service, which tracks progress.
+Callers request workflow steps using command events such as `VERIFY_OTP` and
+`UPDATE_PROFILE`. This service is intended to execute those tasks by calling
+external services, then advance the workflow after successful execution.
+
+External integrations are not implemented yet. The current testing implementation
+only applies configured transitions and bookkeeping actions; `APPLIED` does not
+yet confirm OTP verification, profile updates or document uploads.
 
 ```text
-OTP_VERIFICATION --OTP_VERIFIED--> PROFILE_DETAILS
-PROFILE_DETAILS --PROFILE_SUBMITTED--> ACCOUNT_STATEMENT_UPLOAD
-ACCOUNT_STATEMENT_UPLOAD --ACCOUNT_STATEMENT_UPLOADED--> UDYAM_DOCUMENT_UPLOAD
-UDYAM_DOCUMENT_UPLOAD --UDYAM_DOCUMENT_UPLOADED--> COMPLETED
+OTP_VERIFICATION --VERIFY_OTP--> PROFILE_DETAILS
+PROFILE_DETAILS --UPDATE_PROFILE--> ACCOUNT_STATEMENT_UPLOAD
+ACCOUNT_STATEMENT_UPLOAD --UPLOAD_ACCOUNT_STATEMENT--> UDYAM_DOCUMENT_UPLOAD
+UDYAM_DOCUMENT_UPLOAD --UPLOAD_UDYAM_DOCUMENT--> COMPLETED
 ```
+
+| Command event | Intended task | State after success |
+| --- | --- | --- |
+| `VERIFY_OTP` | Ask the OTP service to verify the supplied OTP | `PROFILE_DETAILS` |
+| `UPDATE_PROFILE` | Ask the profile service to save/update profile details | `ACCOUNT_STATEMENT_UPLOAD` |
+| `UPLOAD_ACCOUNT_STATEMENT` | Ask the document service to store the account statement | `UDYAM_DOCUMENT_UPLOAD` |
+| `UPLOAD_UDYAM_DOCUMENT` | Ask the document service to store the Udyam registration document | `COMPLETED` |
+
+These names describe requests to perform work. `CREATE` starts at
+`OTP_VERIFICATION`; `GET_STATE` reads progress without executing a step.
 
 ## Run locally
 
@@ -137,7 +152,7 @@ a database error. Revisit these constraints when reference formats are defined.
 Creates an instance using the highest `ACTIVE` version of the workflow. Seeded
 onboarding starts at `OTP_VERIFICATION`. A reference can have only one instance.
 
-### Submit a completed event
+### Request a workflow step
 
 ```json
 {
@@ -145,7 +160,7 @@ onboarding starts at `OTP_VERIFICATION`. A reference can have only one instance.
     "operation": "SUBMIT_EVENT",
     "requestId": "req-002",
     "referenceId": "APP-101",
-    "event": "OTP_VERIFIED",
+    "event": "VERIFY_OTP",
     "idempotencyKey": "APP-101-otp"
   },
   "payload": {}
@@ -160,7 +175,7 @@ Example response:
     "operation": "SUBMIT_EVENT",
     "requestId": "req-002",
     "referenceId": "APP-101",
-    "event": "OTP_VERIFIED",
+    "event": "VERIFY_OTP",
     "idempotencyKey": "APP-101-otp",
     "workflowKey": "onboarding",
     "status": "SUCCESS",
@@ -172,19 +187,19 @@ Example response:
     "workflowKey": "onboarding",
     "definitionVersion": 1,
     "currentState": "PROFILE_DETAILS",
-    "nextEvent": "PROFILE_SUBMITTED",
+    "nextEvent": "UPDATE_PROFILE",
     "nextState": "ACCOUNT_STATEMENT_UPLOAD",
     "completed": false,
     "availableTransitions": [
-      {"event": "PROFILE_SUBMITTED", "nextState": "ACCOUNT_STATEMENT_UPLOAD"}
+      {"event": "UPDATE_PROFILE", "nextState": "ACCOUNT_STATEMENT_UPLOAD"}
     ],
     "eventOutcome": "APPLIED"
   }
 }
 ```
 
-Continue with `PROFILE_SUBMITTED`, `ACCOUNT_STATEMENT_UPLOADED` and
-`UDYAM_DOCUMENT_UPLOADED`, using a separate idempotency key for each event.
+Continue with `UPDATE_PROFILE`, `UPLOAD_ACCOUNT_STATEMENT` and
+`UPLOAD_UDYAM_DOCUMENT`, using a separate idempotency key for each event.
 There is no execute-all operation.
 
 ### Read current progress
@@ -348,7 +363,12 @@ generated IDs and their `RETURNING` values for related rows.
 
 Definitions require one initial state, at least one terminal state, no outgoing
 transitions from terminal states and no unreachable states. Action names resolve through `WorkflowBehaviorRegistry`; unknown names fail closed.
-Seeded actions record context values or log activity. The service trusts the consuming service's completed business events.
+Seeded actions currently record context values or log activity. Future external
+service calls belong in awaited transition actions, before progress is persisted.
+Failures must propagate so the database transaction rolls back. External side
+effects also require their own idempotency because a database rollback cannot
+undo a remote call. Step inputs and external API contracts are still to be defined;
+the current request payload remains `{}`.
 
 Machine context format 1 stores a flat, single-region state and JSON-compatible
 extended variables. Hierarchical/parallel states and arbitrary Java object

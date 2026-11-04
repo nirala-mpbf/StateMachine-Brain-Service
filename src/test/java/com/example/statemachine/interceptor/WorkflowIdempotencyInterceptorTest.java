@@ -135,7 +135,7 @@ class WorkflowIdempotencyInterceptorTest {
 
     private WorkflowCommand command(WorkflowOperation operation) {
         return new WorkflowCommand(new WorkflowCommandMetadata(operation.name(), "request-1", "APP-101",
-                operation == WorkflowOperation.SUBMIT_EVENT ? "OTP_VERIFIED" : null,
+                operation == WorkflowOperation.SUBMIT_EVENT ? "VERIFY_OTP" : null,
                 operation == WorkflowOperation.GET_STATE ? null : "key-1",
                 operation == WorkflowOperation.CREATE ? "onboarding" : null), operation);
     }

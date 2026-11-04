@@ -19,13 +19,13 @@ class JdbcWorkflowStateMachinePersistenceTest {
     void restoresExistingJsonAndRoundTripsExtendedVariables() throws Exception {
         String contextJson = """
                 {"formatVersion":1,"state":"PROFILE_DETAILS","variables":{
-                  "completedChecks":["PROFILE_SUBMITTED"],"count":2,"large":2147483648,
+                  "completedChecks":["UPDATE_PROFILE"],"count":2,"large":2147483648,
                   "huge":9223372036854775808,"ratio":1.5,"enabled":true,
                   "optional":null,"label":"<review>&done","nested":{"value":3}}}
                 """;
         StateMachineContext<String, String> context = stateMachinePersistence.deserializeContext(instance(contextJson, 1));
         var variables = context.getExtendedState().getVariables();
-        assertEquals(List.of("PROFILE_SUBMITTED"), variables.get("completedChecks"));
+        assertEquals(List.of("UPDATE_PROFILE"), variables.get("completedChecks"));
         assertEquals(2, variables.get("count"));
         assertEquals(2147483648L, variables.get("large"));
         assertEquals(new BigInteger("9223372036854775808"), variables.get("huge"));

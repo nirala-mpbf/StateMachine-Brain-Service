@@ -9,7 +9,7 @@ Callers request workflow steps using command events such as `VERIFY_OTP` and
 external services, then advance the workflow after successful execution.
 
 External integrations are not implemented yet. The current testing implementation
-only applies configured transitions and bookkeeping actions; `APPLIED` does not
+only applies configured transitions, TODO step strategies and bookkeeping actions; `APPLIED` does not
 yet confirm OTP verification, profile updates or document uploads.
 
 ```text
@@ -363,12 +363,21 @@ generated IDs and their `RETURNING` values for related rows.
 
 Definitions require one initial state, at least one terminal state, no outgoing
 transitions from terminal states and no unreachable states. Action names resolve through `WorkflowBehaviorRegistry`; unknown names fail closed.
-Seeded actions currently record context values or log activity. Future external
-service calls belong in awaited transition actions, before progress is persisted.
+Step strategies are discovered from Spring components implementing
+`WorkflowStepStrategy`. A configured transition action name selects an implementation;
+`WorkflowStepCommand` executes it with request and definition context. The four
+onboarding strategies contain TODOs for future external calls. Bookkeeping actions
+record context values or log activity. All transition actions are awaited before
+progress is persisted.
 Failures must propagate so the database transaction rolls back. External side
 effects also require their own idempotency because a database rollback cannot
 undo a remote call. Step inputs and external API contracts are still to be defined;
 the current request payload remains `{}`.
+
+See [Configurable workflow steps](docs/WORKFLOW_STEPS.md) for the submission
+flowchart, implementation template, action bindings and workflow version changes.
+Reordering transitions or reusing a strategy requires configuration changes only.
+A new kind of business task requires a new strategy and its database binding.
 
 Machine context format 1 stores a flat, single-region state and JSON-compatible
 extended variables. Hierarchical/parallel states and arbitrary Java object

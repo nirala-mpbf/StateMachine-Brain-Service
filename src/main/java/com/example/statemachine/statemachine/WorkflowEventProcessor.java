@@ -1,6 +1,8 @@
 package com.example.statemachine.statemachine;
 
 import com.example.statemachine.dto.workflow.WorkflowEventProcessingResult;
+import com.example.statemachine.dto.workflow.WorkflowStepContext;
+import com.example.statemachine.constants.WorkflowConstants;
 import com.example.statemachine.enums.WorkflowEventProcessingOutcome;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,6 +22,11 @@ import reactor.core.publisher.Mono;
 public class WorkflowEventProcessor {
 
     public WorkflowEventProcessingResult processEvent(StateMachine<String, String> stateMachine, String event) {
+        return processEvent(stateMachine, event, null);
+    }
+
+    public WorkflowEventProcessingResult processEvent(
+            StateMachine<String, String> stateMachine, String event, WorkflowStepContext stepContext) {
         String previousStateCode = stateMachine.getState().getId();
         AtomicBoolean transitionApplied = new AtomicBoolean();
 
@@ -40,6 +47,7 @@ public class WorkflowEventProcessor {
                         Mono.just(
                             MessageBuilder
                             .withPayload(event)
+                            .setHeader(WorkflowConstants.WORKFLOW_STEP_CONTEXT_HEADER, stepContext)
                             .build()
                         )
                     )

@@ -7,6 +7,7 @@ import com.example.statemachine.dto.api.WorkflowCommandMetadata;
 import com.example.statemachine.dto.api.WorkflowDetails;
 import com.example.statemachine.dto.persistence.WorkflowInstance;
 import com.example.statemachine.dto.workflow.WorkflowDefinition;
+import com.example.statemachine.dto.workflow.WorkflowStepContext;
 import com.example.statemachine.dto.workflow.WorkflowEventProcessingResult;
 import com.example.statemachine.enums.LogValueSanitizerFunction;
 import com.example.statemachine.enums.WorkflowEventOutcome;
@@ -98,7 +99,7 @@ public class WorkflowExecutionService {
                 throw WorkflowException.invalid("Unknown event for this workflow definition: " + eventCode);
             }
 
-            processAndRecordEvent(stateMachine, eventCode, workflowDefinition.id(), commandMetadata);
+            processAndRecordEvent(stateMachine, eventCode, workflowDefinition, commandMetadata);
 
             stateMachinePersister.persist(stateMachine, commandMetadata.referenceId());
 
@@ -115,10 +116,12 @@ public class WorkflowExecutionService {
     private void processAndRecordEvent(
             StateMachine<String, String> stateMachine,
             String eventCode,
-            Integer definitionId,
+            WorkflowDefinition workflowDefinition,
             WorkflowCommandMetadata commandMetadata) {
 
-        WorkflowEventProcessingResult eventResult = workflowEventProcessor.processEvent(stateMachine, eventCode);
+        WorkflowEventProcessingResult eventResult = workflowEventProcessor.processEvent(stateMachine, eventCode,
+                new WorkflowStepContext(commandMetadata, workflowDefinition.id(),
+                        workflowDefinition.workflowKey(), workflowDefinition.version()));
 
         log.debug("workflow_event_processed event={} sourceState={} targetState={} outcome={}",
                 LogValueSanitizerFunction.SANITIZE.apply(eventCode), LogValueSanitizerFunction.SANITIZE.apply(eventResult.previousState()), LogValueSanitizerFunction.SANITIZE.apply(eventResult.currentState()), eventResult.outcome());
@@ -131,7 +134,7 @@ public class WorkflowExecutionService {
 
             case APPLIED -> workflowHistoryRepository.recordTransition(
                             commandMetadata.referenceId(),
-                            definitionId,
+                            workflowDefinition.id(),
                             eventResult.previousState(),
                             eventResult.event(),
                             eventResult.currentState(),

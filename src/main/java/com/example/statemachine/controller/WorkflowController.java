@@ -51,8 +51,10 @@ public class WorkflowController {
             Coordinates workflow steps requested by the caller. Event names are commands:
             VERIFY_OTP, UPDATE_PROFILE, UPLOAD_ACCOUNT_STATEMENT and UPLOAD_UDYAM_DOCUMENT.
             External service integrations for these tasks are planned but not implemented.
-            The current testing implementation applies configured transitions and bookkeeping
-            actions only; an applied event does not yet prove a business task succeeded.
+            Transition action bindings select Spring-discovered step strategies through
+            WorkflowStepCommand. Workflow order and action bindings come from the definition.
+            Current step strategies contain TODOs and permit testing transitions;
+            an applied event does not yet prove a business task succeeded.
             When integrations are added, advance the workflow only after the external task succeeds.
 
             | Operation | Required metadata | Optional metadata | Forbidden metadata | HTTP |

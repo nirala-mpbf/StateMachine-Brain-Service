@@ -18,7 +18,11 @@ INSERT INTO workflow_brain.workflow_action (action_name, description) VALUES
 ('recordStateEntry', 'Record the last entered state in extended state'),
 ('recordStateExit', 'Record the last exited state in extended state'),
 ('observeState', 'Log state activity at DEBUG level'),
-('recordTransition', 'Record the last processed transition event in extended state');
+('recordTransition', 'Record the last processed transition event in extended state'),
+('verifyOtp', 'TODO: verify OTP through an external service'),
+('updateProfile', 'TODO: update profile through an external service'),
+('uploadAccountStatement', 'TODO: upload account statement through an external service'),
+('uploadUdyamDocument', 'TODO: upload Udyam document through an external service');
 
 INSERT INTO workflow_brain.workflow_transition
 (event_code, transition_kind, fk_id_workflow_definition, fk_id_source_workflow_state, fk_id_target_workflow_state)
@@ -46,7 +50,23 @@ CROSS JOIN (VALUES
 ) AS binding(action_name, phase)
 JOIN workflow_brain.workflow_action action ON action.action_name = binding.action_name;
 
+-- The transition selects behavior by action name; Java strategies never decide the next state.
 INSERT INTO workflow_brain.workflow_transition_action (execution_order, fk_id_workflow_transition, fk_id_workflow_action)
 SELECT 0, transition.id, action.id
 FROM workflow_brain.workflow_transition transition
-JOIN workflow_brain.workflow_action action ON action.action_name = 'recordTransition';
+JOIN workflow_brain.workflow_definition definition ON definition.id = transition.fk_id_workflow_definition
+JOIN (VALUES
+    ('VERIFY_OTP', 'verifyOtp'),
+    ('UPDATE_PROFILE', 'updateProfile'),
+    ('UPLOAD_ACCOUNT_STATEMENT', 'uploadAccountStatement'),
+    ('UPLOAD_UDYAM_DOCUMENT', 'uploadUdyamDocument')
+) AS binding(event_code, action_name) ON binding.event_code = transition.event_code
+JOIN workflow_brain.workflow_action action ON action.action_name = binding.action_name
+WHERE definition.workflow_key = 'onboarding' AND definition.version = 1;
+
+INSERT INTO workflow_brain.workflow_transition_action (execution_order, fk_id_workflow_transition, fk_id_workflow_action)
+SELECT 1, transition.id, action.id
+FROM workflow_brain.workflow_transition transition
+JOIN workflow_brain.workflow_definition definition ON definition.id = transition.fk_id_workflow_definition
+JOIN workflow_brain.workflow_action action ON action.action_name = 'recordTransition'
+WHERE definition.workflow_key = 'onboarding' AND definition.version = 1;

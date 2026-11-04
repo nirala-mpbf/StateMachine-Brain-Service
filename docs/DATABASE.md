@@ -57,8 +57,11 @@ audit metadata, without a foreign key to Redis.
 ## Seeded onboarding
 
 V2 creates one active definition (`workflow_key=onboarding`, `version=1`), five
-states, four external transitions, four actions, fifteen state-action
-bindings and four transition-action bindings.
+states, four external transitions, eight actions, fifteen state-action
+bindings and eight transition-action bindings. Each transition runs its TODO step
+strategy at execution order 0, followed by recordTransition at order 1. See
+[Configurable workflow steps](WORKFLOW_STEPS.md) for Java strategy registration
+and database bindings.
 
 Seed statements resolve generated IDs through workflow keys, state codes, action
 names. They do not depend on specific identity sequence values.

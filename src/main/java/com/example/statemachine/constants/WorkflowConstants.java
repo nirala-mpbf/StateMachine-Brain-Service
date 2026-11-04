@@ -11,6 +11,7 @@ public final class WorkflowConstants {
     public static final String ACTION_PHASE_ENTRY = "ENTRY";
     public static final String ACTION_PHASE_EXIT = "EXIT";
     public static final String ACTION_PHASE_STATE = "STATE";
+    public static final String WORKFLOW_STEP_CONTEXT_HEADER = "workflowStepContext";
     public static final String API_PATH_PREFIX = "/api/";
     public static final String WORKFLOWS_PATH = "/api/workflows";
     public static final String CORRELATION_ID_HEADER = "X-Correlation-Id";

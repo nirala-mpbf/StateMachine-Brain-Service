@@ -23,7 +23,7 @@ class JdbcWorkflowModelFactoryTest {
     void convertsFrameworkMachineIdentifierToIntegerDefinitionId() {
         CapturingDefinitionRepository definitionRepository = new CapturingDefinitionRepository();
         JdbcWorkflowModelFactory modelFactory = new JdbcWorkflowModelFactory(
-                definitionRepository, new WorkflowBehaviorRegistry());
+                definitionRepository, new WorkflowBehaviorRegistry(List.of()));
 
         assertNotNull(modelFactory.build("7"));
         assertEquals(Integer.valueOf(7), definitionRepository.requestedDefinitionId);
@@ -36,7 +36,7 @@ class JdbcWorkflowModelFactoryTest {
     @Test
     void rejectsNonNumericFrameworkIdentifiers() {
         JdbcWorkflowModelFactory modelFactory = new JdbcWorkflowModelFactory(
-                new CapturingDefinitionRepository(), new WorkflowBehaviorRegistry());
+                new CapturingDefinitionRepository(), new WorkflowBehaviorRegistry(List.of()));
         assertThrows(NumberFormatException.class, () -> modelFactory.build("legacy-definition-key"));
     }
 
